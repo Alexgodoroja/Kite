@@ -7,8 +7,6 @@ from blogs.tests.helpers import LogInTester
 
 class SignUpViewTestCase(TestCase, LogInTester):
 
-    fixtures = ['blogs/tests/fixtures/default_user.json']
-
     def setUp(self):
         self.url = reverse('sign_up')
         self.form_input = {
@@ -20,7 +18,6 @@ class SignUpViewTestCase(TestCase, LogInTester):
             'new_password': 'Password123',
             'password_confirmation': 'Password123'
         }
-        self.user = User.objects.get(username = '@johnsmith')
 
     def test_sign_up_url(self):
         self.assertEqual(self.url, '/sign_up/')
@@ -33,7 +30,7 @@ class SignUpViewTestCase(TestCase, LogInTester):
         self.assertTrue(isinstance(form, SignUpForm))
         self.assertFalse(form.is_bound)
 
-    def test_unsuccessful_log_in(self):
+    def test_unsuccessful_sign_up(self):
         self.form_input['username'] = 'BAD_USERNAME'
         before_count = User.objects.count()
         response = self.client.post(self.url, self.form_input)
@@ -46,7 +43,7 @@ class SignUpViewTestCase(TestCase, LogInTester):
         self.assertTrue(form.is_bound)
         self.assertFalse(self._is_logged_in())
 
-    def test_successful_log_in(self):
+    def test_successful_sign_up(self):
         before_count = User.objects.count()
         response = self.client.post(self.url, self.form_input, follow = True)
         after_count = User.objects.count()
