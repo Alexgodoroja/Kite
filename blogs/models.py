@@ -102,3 +102,9 @@ class Club(models.Model):
     bio = models.CharField(max_length = 500, blank = True)
     rules = models.CharField(max_length = 1000, blank = True)
     theme = models.CharField(max_length = 50, blank = True)
+
+class Book(models.Model):
+    book_title = models.CharField(max_length = 255, blank = False)
+    book_author = models.CharField(max_length = 255, blank = False)
+    year_of_publication = models.PositiveSmallIntegerField(blank = False)
+    publisher = models.CharField(max_length = 255, blank = False)
