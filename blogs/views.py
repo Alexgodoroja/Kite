@@ -36,8 +36,8 @@ def account(request):
         if form.is_valid():
             user = form.save(commit=False)
             user.save()
-            messages.success(request, 'Your profile updated successfully')
-            return redirect('profile')
+            messages.success(request, "Your profile updated successfully")
+            return redirect('home')
     else:
         form = UpdateProfileForm(instance=request.user)
 
