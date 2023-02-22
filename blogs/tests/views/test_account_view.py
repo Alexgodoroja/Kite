@@ -18,7 +18,7 @@ class ProfileViewTest(TestCase):
 
     def setUp(self):
         self.user = User.objects.get(username="@johnsmith")
-        self.url = reverse("profile")
+        self.url = reverse("account_details")
         self.form_input = {
             "first_name": "John2",
             "last_name": "Smith2",
@@ -28,13 +28,13 @@ class ProfileViewTest(TestCase):
         }
 
     def test_profile_url(self):
-        self.assertEqual(self.url, "/profile/")
+        self.assertEqual(self.url, "/accounts/account-details/")
 
     def test_get_profile(self):
         self.client.login(username=self.user.username, password="Password123")
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "profile.html")
+        self.assertTemplateUsed(response, "account_details.html")
         form = response.context["form"]
         self.assertTrue(isinstance(form, UpdateProfileForm))
         self.assertEqual(form.instance, self.user)
@@ -54,7 +54,7 @@ class ProfileViewTest(TestCase):
         after_count = User.objects.count()
         self.assertEqual(after_count, before_count)
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "profile.html")
+        self.assertTemplateUsed(response, "account_details.html")
         form = response.context["form"]
         self.assertTrue(isinstance(form, UpdateProfileForm))
         self.assertTrue(form.is_bound)
@@ -73,7 +73,7 @@ class ProfileViewTest(TestCase):
         after_count = User.objects.count()
         self.assertEqual(after_count, before_count)
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "profile.html")
+        self.assertTemplateUsed(response, "account_details.html")
         form = response.context["form"]
         self.assertTrue(isinstance(form, UpdateProfileForm))
         self.assertTrue(form.is_bound)
