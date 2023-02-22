@@ -25,9 +25,12 @@ def home(request):
 
 def about(request):
     return render(request, 'about.html')
-    
+
+def profile():
+    pass
+
 @login_required
-def profile(request):
+def account(request):
     if request.method == 'POST':
         form = UpdateProfileForm(request.POST, instance=request.user)
         if form.is_valid():
@@ -38,7 +41,7 @@ def profile(request):
     else:
         form = UpdateProfileForm(instance=request.user)
 
-    return render(request, 'profile.html', {'form': form})
+    return render(request, 'account_details.html', {'form': form})
 
 def sign_up(request):
     if request.method == 'POST':
