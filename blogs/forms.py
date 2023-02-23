@@ -9,7 +9,7 @@ class LogInForm(forms.Form):
 class SignUpForm(forms.ModelForm):
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'username', 'email', 'bio']
+        fields = ['first_name', 'last_name', 'username', 'email', 'bio', 'favourite_genre']
         widgets = {'bio': forms.Textarea()}
 
     new_password = forms.CharField(
@@ -45,7 +45,7 @@ class SignUpForm(forms.ModelForm):
 class UserForm(forms.ModelForm):
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'username', 'email', 'bio']
+        fields = ['first_name', 'last_name', 'username', 'email', 'bio', 'favourite_genre']
         widgets = {'bio': forms.Textarea()}
 
 class CreateClubForm(forms.ModelForm):
