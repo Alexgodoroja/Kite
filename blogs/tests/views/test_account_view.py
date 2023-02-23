@@ -3,7 +3,7 @@ from django.contrib import messages
 from django.test import TestCase
 from django.urls import reverse
 
-from blogs.forms import UpdateProfileForm
+from blogs.forms import UserForm
 from blogs.models import User
 from blogs.tests.helpers import reverse_with_next
 
@@ -36,7 +36,7 @@ class ProfileViewTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "account_details.html")
         form = response.context["form"]
-        self.assertTrue(isinstance(form, UpdateProfileForm))
+        self.assertTrue(isinstance(form, UserForm))
         self.assertEqual(form.instance, self.user)
 
     def test_get_profile_redirects_when_not_logged_in(self):
@@ -56,7 +56,7 @@ class ProfileViewTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "account_details.html")
         form = response.context["form"]
-        self.assertTrue(isinstance(form, UpdateProfileForm))
+        self.assertTrue(isinstance(form, UserForm))
         self.assertTrue(form.is_bound)
         self.user.refresh_from_db()
         self.assertEqual(self.user.username, "@johnsmith")
@@ -75,7 +75,7 @@ class ProfileViewTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "account_details.html")
         form = response.context["form"]
-        self.assertTrue(isinstance(form, UpdateProfileForm))
+        self.assertTrue(isinstance(form, UserForm))
         self.assertTrue(form.is_bound)
         self.user.refresh_from_db()
         self.assertEqual(self.user.username, "@johnsmith")
