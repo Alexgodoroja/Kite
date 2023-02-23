@@ -1,6 +1,7 @@
 from django.core.validators import RegexValidator
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.db.models.functions import Lower
 from libgravatar import Gravatar
 
 class User(AbstractUser):
@@ -118,6 +119,14 @@ class User(AbstractUser):
             ("Y", "Young Adult"),
         ],
         blank = True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                Lower("email"),
+                name="unique_lower_user_email",
+            )
+        ]
 
     def gravatar(self, size=120):
         return Gravatar(self.email).get_image(size=size, default='mp')
