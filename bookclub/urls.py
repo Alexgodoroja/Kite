@@ -26,11 +26,13 @@ urlpatterns = [
     path('log_in/', views.log_in, name = 'log_in'),
     path('log_out/', views.log_out, name = 'log_out'),
     path('create_club/', views.create_club, name = 'create_club'),
+    path('club/<int:club_id>', views.club, name = 'show_club'),
+    path('user/<int:user_id>', views.profile, name = 'profile'),
+    path('clubs/', views.club_list, name='club_list'),
     path("accounts/account-details/", views.UpdateProfileView.as_view(), name="account_details"),
     path(
         "accounts/change-password/", views.ChangePasswordView.as_view(), name="change_password"
     ),
-    path("<username>/", views.profile, name = 'profile'),
 
 ]
 

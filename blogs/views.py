@@ -51,12 +51,12 @@ def about(request):
     return render(request, 'about.html')
 
 @login_required
-def profile(request, username):
-    if User.objects.filter(username=username).exists():
-        return render(
-            request, 'profile.html', {'user': User.objects.get(username=username)}
-        )
-    raise Http404
+def profile(request, user_id):
+    try:
+        user = User.objects.filter(id=user_id)
+    except ObjectDoesNotExist:
+        raise Http404
+    return render(request, 'profile.html', {'user': user})
 
 @login_prohibited
 def sign_up(request):
@@ -106,3 +106,16 @@ def create_club(request):
     form = CreateClubForm()
     return render(request, 'create_club.html', {'form': form})
 
+def club_list(request):
+    clubs = Club.objects.all()
+    return render(request, 'club_list.html', {'clubs': clubs})
+
+@login_required
+def club(request, club_id):
+    try:
+        club = Club.objects.get(id=club_id)
+    except ObjectDoesNotExist:
+        return redirect('club_list')
+    else:
+        return render(request, 'club_page.html', {'club': club})
+    
