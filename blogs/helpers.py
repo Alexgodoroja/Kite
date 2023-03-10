@@ -7,11 +7,13 @@ def login_prohibited(view_function):
         if request.user.is_authenticated:
             return redirect(settings.REDIRECT_URL_WHEN_LOGGED_IN)
         return view_function(request)
+
     return modified_view_function
 
 
-def get_themes():
-    return [ # Taken from Google Books
+def get_genres():
+    return [  # Taken from Google Books
+        ("NO", "None"),
         ("E", "Ebooks"),
         ("A", "Arts"),
         ("BM", "Biographies & Memoirs"),
@@ -38,3 +40,7 @@ def get_themes():
         ("T", "Travel"),
         ("Y", "Young Adult"),
     ]
+
+
+def get_themes():
+    return get_genres()[1:]

@@ -4,7 +4,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db.models.functions import Lower
 from libgravatar import Gravatar
 
-from .helpers import get_themes
+from .helpers import get_genres, get_themes
 
 class User(AbstractUser):
     def _init_(self):
@@ -91,7 +91,7 @@ class User(AbstractUser):
     last_name = models.CharField(max_length = 50, blank = False)
     email = models.EmailField(unique = True, blank = False)
     bio = models.CharField(max_length = 520, blank = True)
-    favourite_genre = models.CharField(max_length = 2, choices = get_themes(), blank = True)
+    favourite_genre = models.CharField(max_length = 2, choices = get_genres(), default=("NO", "None"))
 
     class Meta:
         constraints = [
@@ -118,4 +118,4 @@ class Club(models.Model):
     )
     bio = models.CharField(max_length = 500, blank = True)
     rules = models.CharField(max_length = 1000, blank = True)
-    theme = models.CharField(max_length = 2, choices = get_themes(), blank = True)
+    theme = models.CharField(max_length = 2, choices = get_themes(), default="")
