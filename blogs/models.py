@@ -56,6 +56,16 @@ class Club(models.Model):
     rules = models.CharField(max_length = 1000, blank = True)
     theme = models.CharField(max_length = 50, blank = True)
 
+    def make_owner(self, username, admin_username):
+        if self.owner == username:
+            if not self.admins.filter(username=admin_username).exists():
+                raise ValueError('User is not an admin of the club.')
+            new_owner = User.objects.get(username=admin_username)
+            self.admins.append(self.owner)
+            self.admins.remove(new_owner)
+            self.owner = new_owner
+            self.club.save()
+
     def invite_user(self, username: str) -> None:
         if self.owner == username or username in self.admins:
             self.members.append(username)

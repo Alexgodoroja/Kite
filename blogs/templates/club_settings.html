@@ -1,0 +1,12 @@
+{% extends 'base_content.html' %}
+{% block content %}
+    <div class="blur">
+        <div class="container pb-5 pt-3">
+            <form method="post" action="{{ request.path }}">
+                {% csrf_token %}
+                {% include 'partials/bootstrap_form.html' %}
+                <button type="submit" class="btn btn-dark">Save Changes</button>
+            </form>
+        </div>
+    </div>
+{% endblock %}
