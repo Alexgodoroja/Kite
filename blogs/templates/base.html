@@ -53,13 +53,25 @@
             var clubName = row.find('td:first-child').text().trim();
             {% for club in clubs %}
               if (clubName === '{{ club.name }}') {
-                var isMember = false;
+                var isJoined = false;
+
                 {% for member in club.members.all %}
                   if ({{ member.id }} === {{ request.user.id }}) {
-                    isMember = true;
+                    isJoined = true;
                   }
                 {% endfor %}
-                if (isChecked && !isMember) {
+
+                {% for admin in club.admins.all %}
+                  if ({{ admin.id }} === {{ request.user.id }}) {
+                    isJoined = true;
+                  }
+                {% endfor %}
+
+                if ({{ club.owner.id }} === {{ request.user.id }}) {
+                  isJoined = true;
+                }
+
+                if (isChecked && !isJoined) {
                   row.hide()
                 } else {
                   row.show()
@@ -67,6 +79,7 @@
               }
             {% endfor %}
         });
+        table.page.len(-1).draw();
       }
     </script>
 
