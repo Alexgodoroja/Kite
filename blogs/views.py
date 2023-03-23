@@ -99,7 +99,8 @@ def profile(request, user_id):
         user = User.objects.get(id=user_id)
     except ObjectDoesNotExist:
         raise Http404
-    return render(request, 'profile.html', {'user': user, 'pending': pending_requests_count(request.user)})
+    user_posts = [post for post in Post.objects.all() if request.user == post.author]
+    return render(request, 'profile.html', {'user': user, 'posts': user_posts, 'pending': pending_requests_count(request.user)})
 
 @login_prohibited
 def sign_up(request):
