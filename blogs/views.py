@@ -37,15 +37,10 @@ class UpdateClubView(LoginRequiredMixin, UpdateView):
 
     def get(self, request, club_id, *args, **kwargs):
         club = get_object_or_404(Club, id=club_id)
-        if request.user.id in (club.admins.all().values_list('id', flat=True)):
-            context = {'status': "admin"}
-        elif request.user.id == club.owner.id:
-            context = {'status': "owner"}
-        else:
-            return redirect("home")
-
         form = CreateClubForm(instance=club)
-        return self.render_to_response(context | {"club": club, "form": form}, *args, **kwargs)
+        return self.render_to_response(
+            {"request": request, "club": club, "form": form}, *args, **kwargs
+        )
 
     def get_success_url(self):
         messages.add_message(
@@ -296,3 +291,64 @@ def all_pending_requests(request):
 
     return render(request, 'pending_all_requests.html', {'pending':pending, 'count': pending_requests_count(current_user), 'counted': counted}) 
 
+@login_required
+def promote_admin(request, club_id, user_id):
+    club = get_object_or_404(Club, id=club_id)
+    user = get_object_or_404(club.admins, id=user_id)
+    if request.user != club.owner:
+        return redirect("home")
+    if request.method == "POST":
+        club.admins.add(request.user)
+        club.admins.remove(user)
+        print(club.owner)
+        club.owner = user
+        club.save()
+        messages.success(request, f'{user.first_name} {user.last_name} has been promoted to owner.')
+    return redirect("club_settings", club.id)
+
+@login_required
+def demote_admin(request, club_id, user_id):
+    club = get_object_or_404(Club, id=club_id)
+    user = get_object_or_404(club.admins, id=user_id)
+    if request.user != club.owner:
+        return redirect("home")
+    if request.method == "POST":
+        club.admins.remove(user)
+        club.members.add(user)
+        club.save()
+        messages.success(request, f'{user.first_name} {user.last_name} has been demoted to member.')
+    return redirect("club_settings", club.id)
+
+@login_required
+def promote_user(request, club_id, user_id):
+    club = get_object_or_404(Club, id=club_id)
+    user = get_object_or_404(club.members, id=user_id)
+    if request.user not in (club.admins.all(), club.owner):
+        return redirect("home")
+    if request.method == "POST":
+        club.admins.add(user)
+        club.members.remove(user)
+        club.save()
+        messages.success(request, f'{user.first_name} {user.last_name} has been promoted to admin.')
+    return redirect("club_settings", club.id)
+
+@login_required
+def kick_user(request, club_id, user_id):
+    club = get_object_or_404(Club, id=club_id)
+    user = get_object_or_404(club.members, id=user_id)
+    if request.user not in (club.admins.all(), club.owner):
+        return redirect("home")
+    if request.method == "POST":
+        club.members.remove(user)
+        club.save()
+        messages.success(request, f'{user.first_name} {user.last_name} has been kicked from the club.')
+    return redirect("club_settings", club.id)
+
+@login_required
+def delete_club(request, club_id):
+    club = get_object_or_404(Club, id=club_id)
+    if request.user != club.owner:
+        return redirect("home")
+    if request.method == "POST":
+        club.delete()
+    return redirect("club_list")
