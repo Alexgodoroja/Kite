@@ -10,12 +10,15 @@ from django.http import Http404, HttpResponseForbidden
 from django.shortcuts import redirect, render, get_object_or_404
 from django.urls import reverse_lazy
 
+from django.conf import settings
 
 from django.core.exceptions import ObjectDoesNotExist
+from django.core.paginator import Paginator, EmptyPage
 
 
-from .forms import CreateClubForm, LogInForm, SignUpForm, UserForm, PostForm, EventForm
-from .models import Club, User, Post, books, Event, Comments
+from .forms import CreateClubForm, LogInForm, SignUpForm, UserForm, PostForm, EventForm, BookForm
+from .models import Club, User, Post, Book, Event, Comments
+
 from .helpers import login_prohibited, active_count
 
 from random import randint
@@ -81,9 +84,9 @@ def home(request):
     if request.user.is_authenticated:
         random_books = []
         clubs = Club.objects.all()
-        count = books.objects.count()
+        count = Book.objects.count()
         for i in range(0,2):
-            random_books.append(books.objects.all()[randint(0, count - 1)])
+            random_books.append(Book.objects.all()[randint(0, count - 1)])
         return render(request, 'feed.html', {'clubs': clubs, 'pending': pending_requests_count(request.user), 'random_books': random_books})
     return render(request, 'home.html', {'form': LogInForm()})
 
@@ -240,8 +243,10 @@ def club(request, club_id):
                                                   'applied': applied,
                                                   'is_member': is_member,
                                                   'current_user': request.user,
+                                                  'current_book': club.book,
                                                   'active_users': active_users,
                                                   'pending': pending_requests_count(request.user)})
+
 
 @login_required
 def join_request_club(request, club_id):
@@ -290,6 +295,29 @@ def all_pending_requests(request):
         # pending.append(club.pending_members.all())
 
     return render(request, 'pending_all_requests.html', {'pending':pending, 'count': pending_requests_count(current_user), 'counted': counted})
+
+
+@login_required
+def featured_book(request, club_id):
+    club = Club.objects.get(id=club_id)
+    if request.method == 'POST':
+        form = BookForm(request.POST)
+        if form.is_valid():
+            
+            featured_book = form.save(request.user)
+            club.book = featured_book
+            
+            club.save()
+            messages.add_message(request, messages.SUCCESS, "Added featured book.")
+            return redirect('show_club', club_id=club_id)
+    else:
+        form = BookForm()
+        return render(request, 'create_featured_book.html', {
+            'form': form,
+            'club': club,
+            'pending': pending_requests_count(request.user)
+        })
+            
 
 @login_required
 def promote_admin(request, club_id, user_id):
@@ -362,3 +390,4 @@ def add_comment(request, post_id):
             form = CommentForm(request.POST)
             if form.is_valid():
                 text = form.cleaned_data.get('
+
