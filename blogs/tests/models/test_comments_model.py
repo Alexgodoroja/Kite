@@ -1,6 +1,6 @@
 from django.test import TestCase
 from django.core.exceptions import ValueError
-from blogs.models import Post, Comments, user
+from blogs.models import Post, Comments, User
 from datetime import datetime
 
 class CommentsModelTestCase(TestCase):
@@ -9,15 +9,15 @@ class CommentsModelTestCase(TestCase):
         "blogs/tests/fixtures/default_user.json",
         "blogs/tests/fixtures/default_club.json",
     ]
-    
+
     def setUp(self):
         self.user = User.objects.get(username='@johnsmith')
-        
+
         self.post = Post.objects.create(
             author=self.user,
             text='This is a test post.'
         )
-        
+
         self.comment = Comments.objects.create(
             post=self.post,
             author=self.user,
