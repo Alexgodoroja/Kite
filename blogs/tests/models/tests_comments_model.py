@@ -1,6 +1,5 @@
 from django.test import TestCase
 from django.core.exceptions import ValueError
-from django.contrib.auth.models import User
 from blogs.models import Post, Comments, user
 from datetime import datetime
 
