@@ -7,15 +7,18 @@ from django.views.generic.edit import UpdateView
 from django.contrib.messages.views import SuccessMessageMixin
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import Http404, HttpResponseForbidden
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect, render, get_object_or_404
 from django.urls import reverse_lazy
 
+from django.conf import settings
 
 from django.core.exceptions import ObjectDoesNotExist
+from django.core.paginator import Paginator, EmptyPage
 
 
-from .forms import CreateClubForm, LogInForm, SignUpForm, UserForm, PostForm
-from .models import Club, User, Post, books
+from .forms import CreateClubForm, LogInForm, SignUpForm, UserForm, PostForm, EventForm, BookForm
+from .models import Club, User, Post, Book, Event, Comments
+
 from .helpers import login_prohibited, active_count
 
 from random import randint
@@ -30,8 +33,28 @@ def pending_requests_count(user):
             pending.append(p_member)
     return len(pending)
 
+class UpdateClubView(LoginRequiredMixin, UpdateView):
+    model = Club
+    form = CreateClubForm
+    template_name = "club_settings.html"
+
+    def get(self, request, club_id, *args, **kwargs):
+        club = get_object_or_404(Club, id=club_id)
+        form = CreateClubForm(instance=club)
+        return self.render_to_response(
+            {"request": request, "club": club, "form": form}, *args, **kwargs
+        )
+
+    def get_success_url(self):
+        messages.add_message(
+            self.request, messages.SUCCESS, "Your club has been updated successfully!"
+        )
+        return redirect("club_list") # club may be deleted
+
+
 class UpdateProfileView(LoginRequiredMixin, UpdateView):
-    model = form_class = UserForm
+    model = User
+    form_class = UserForm
     template_name = "account_details.html"
     extra_context = {"nbar": "account"}
 
@@ -43,7 +66,6 @@ class UpdateProfileView(LoginRequiredMixin, UpdateView):
             self.request, messages.SUCCESS, "Your profile updated successfully!"
         )
         return reverse_lazy("home")
-
 
 
 class ChangePasswordView(LoginRequiredMixin, SuccessMessageMixin, PasswordChangeView):
@@ -62,9 +84,9 @@ def home(request):
     if request.user.is_authenticated:
         random_books = []
         clubs = Club.objects.all()
-        count = books.objects.count()
+        count = Book.objects.count()
         for i in range(0,2):
-            random_books.append(books.objects.all()[randint(0, count - 1)])
+            random_books.append(Book.objects.all()[randint(0, count - 1)])
         return render(request, 'feed.html', {'clubs': clubs, 'pending': pending_requests_count(request.user), 'random_books': random_books})
     return render(request, 'home.html', {'form': LogInForm()})
 
@@ -77,7 +99,8 @@ def profile(request, user_id):
         user = User.objects.get(id=user_id)
     except ObjectDoesNotExist:
         raise Http404
-    return render(request, 'profile.html', {'user': user, 'pending': pending_requests_count(request.user)})
+    user_posts = [post for post in Post.objects.all() if request.user == post.author]
+    return render(request, 'profile.html', {'user': user, 'posts': user_posts, 'pending': pending_requests_count(request.user)})
 
 @login_prohibited
 def sign_up(request):
@@ -107,8 +130,6 @@ def log_in(request):
             messages.add_message(request, messages.ERROR, "The credentials provided were invalid!")
     return render(request, 'log_in.html', {'form': LogInForm()})
 
-
-
 @login_required
 def log_out(request):
     logout(request)
@@ -119,10 +140,8 @@ def create_club(request):
     if request.method == 'POST':
         form = CreateClubForm(request.POST)
         if form.is_valid():
-            club = form.save()
+            club = form.save(owner=request.user)
             messages.add_message(request, messages.SUCCESS, "Club created successfully.")
-            club.admins.add(request.user)
-            club.members.add(request.user)
             return redirect('show_club', club_id = club.id) # should take you to the newly created club's page - not implemented yet
         else:
             messages.add_message(request, messages.ERROR, "This club name is already taken, please choose another name.")
@@ -131,21 +150,59 @@ def create_club(request):
     return render(request, 'create_club.html', {'form': form, 'pending': pending_requests_count(request.user)})
 
 @login_required
+def create_event(request, club_id):
+    club = Club.objects.get(id=club_id)
+    if request.user == club.owner:
+        if request.method == 'POST':
+            form = EventForm(request.POST)
+            if form.is_valid():
+                event = form.save(club)
+                messages.add_message(request, messages.SUCCESS, "Event created successfully.")
+                return redirect('show_club', club_id = event.club.id)
+        else:
+            form = EventForm()
+        return render(request, 'create_event.html', {
+            'form': form,
+            'club': club,
+            'pending': pending_requests_count(request.user)
+        })
+    else:
+        return redirect('show_club', club_id)
+
+
+@login_required
+def attend_event(request, event_id):
+    # club = Club.objects.get(id=club_id)
+    event = Event.objects.get(id=event_id)
+    club = event.club
+    # club = Club.objects.get(id=event.club.id)
+    if request.user in (club.members.all(), club.admins.all()):
+        if request.user not in event.attendees.all():
+            event.attendees.add(request.user)
+        else:
+            event.attendees.remove(request.user)
+    return redirect('show_club', club_id = club.id)
+
+# @login_required
+# def unattend_event(request, event_id):
+#     event = Event.objects.get(id=event_id)
+#     club = event.club
+#     if request.user in event.attendees.all():
+#         event.attendees.remove(request.user)
+#     return redirect('show_club', club_id = club.id)
+
+
+@login_required
 def club_list(request):
     clubs = Club.objects.all()
     return render(request, 'club_list.html', {'clubs': clubs, 'pending': pending_requests_count(request.user)})
 
 @login_required
-def joined_club_list(request, user_id):
-    user = User.objects.get(id=user_id)
-    clubs = Club.objects.filter(member_of = user)
-    return render(request, 'club_list.html', {'clubs': clubs})
-
-@login_required
 def club(request, club_id):
     try:
         club = Club.objects.get(id=club_id)
-        posts = Post.objects.filter(in_club = club)
+        posts = Post.objects.filter(in_club=club).prefetch_related('comments')
+        events = Event.objects.filter(club=club)
     except ObjectDoesNotExist:
         return redirect('club_list')
     else:
@@ -158,7 +215,7 @@ def club(request, club_id):
                     post = Post.objects.create(author=current_user, text=text, in_club=club)
                     return redirect('show_club', club_id)
                 else:
-                    return render(request, 'club_page.html', {'club': club, 'form': form, 'post': post})
+                    return render(request, 'club_page.html', {'club': club, 'form': form, 'posts': posts})
             else:
                 return redirect('log_in')
         form = PostForm()
@@ -169,16 +226,19 @@ def club(request, club_id):
             is_member = True
         if request.user in club.pending_members.all():
             applied = True
-            return render(request, 'club_page.html', {'club': club, 'form': form, 'posts': posts, 'applied' : applied, 'is_member' : is_member, 'pending': pending_requests_count(request.user)})
-        return render(request, 'club_page.html', {'club': club, 
-                                                  'form': form, 
-                                                  'posts': posts, 
-                                                  'applied' : applied, 
-                                                  'is_member' : is_member,
+            return render(request, 'club_page.html', {'club': club, 'form': form, 'posts': posts, 'applied': applied, 'is_member': is_member, 'pending': pending_requests_count(request.user)})
+        return render(request, 'club_page.html', {'club': club,
+                                                  'events': events,
+                                                  'form': form,
+                                                  'posts': posts,
+                                                  'applied': applied,
+                                                  'is_member': is_member,
                                                   'current_user': request.user,
+                                                  'current_book': club.book,
                                                   'active_users': active_users,
                                                   'pending': pending_requests_count(request.user)})
-    
+
+
 @login_required
 def join_request_club(request, club_id):
     club = Club.objects.get(id=club_id)
@@ -187,7 +247,7 @@ def join_request_club(request, club_id):
     messages.add_message(request, messages.SUCCESS, "Join request sent.")
     return redirect('show_club', club_id = club_id)
 
-        
+
 @login_required
 def cancel_request(request, club_id):
     club = Club.objects.get(id=club_id)
@@ -207,14 +267,14 @@ def admin_accept_request(request, club_id, user_id):
         raise Http404
     else:
         return redirect('show_club', club_id = club_id)
-    
+
 @login_required
 def pending_requests(request, club_id):
     club= Club.objects.get(id=club_id)
     pending = club.pending_members.all()
-    return render(request, 'pending_requests.html', {'pending':pending, 'club': club}) 
+    return render(request, 'pending_requests.html', {'pending':pending, 'club': club})
 
-    
+
 @login_required
 def all_pending_requests(request):
     pending ={}
@@ -225,7 +285,116 @@ def all_pending_requests(request):
         pending[club] = list(club.pending_members.all())
         # pending.append(club.pending_members.all())
 
-    return render(request, 'pending_all_requests.html', {'pending':pending, 'count': pending_requests_count(current_user), 'counted': counted}) 
+    return render(request, 'pending_all_requests.html', {'pending':pending, 'count': pending_requests_count(current_user), 'counted': counted})
+
+
+@login_required
+def featured_book(request, club_id):
+    club = Club.objects.get(id=club_id)
+    if request.method == 'POST':
+        form = BookForm(request.POST)
+        if form.is_valid():
+            
+            featured_book = form.save(request.user)
+            club.book = featured_book
+            
+            club.save()
+            messages.add_message(request, messages.SUCCESS, "Added featured book.")
+            return redirect('show_club', club_id=club_id)
+    else:
+        form = BookForm()
+        return render(request, 'create_featured_book.html', {
+            'form': form,
+            'club': club,
+            'pending': pending_requests_count(request.user)
+        })
+            
+
+@login_required
+def promote_admin(request, club_id, user_id):
+    club = get_object_or_404(Club, id=club_id)
+    user = get_object_or_404(club.admins, id=user_id)
+    if request.user != club.owner:
+        return redirect("home")
+    if request.method == "POST":
+        club.admins.add(request.user)
+        club.admins.remove(user)
+        print(club.owner)
+        club.owner = user
+        club.save()
+        messages.success(request, f'{user.first_name} {user.last_name} has been promoted to owner.')
+    return redirect("club_settings", club.id)
+
+@login_required
+def demote_admin(request, club_id, user_id):
+    club = get_object_or_404(Club, id=club_id)
+    user = get_object_or_404(club.admins, id=user_id)
+    if request.user != club.owner:
+        return redirect("home")
+    if request.method == "POST":
+        club.admins.remove(user)
+        club.members.add(user)
+        club.save()
+        messages.success(request, f'{user.first_name} {user.last_name} has been demoted to member.')
+    return redirect("club_settings", club.id)
+
+@login_required
+def promote_user(request, club_id, user_id):
+    club = get_object_or_404(Club, id=club_id)
+    user = get_object_or_404(club.members, id=user_id)
+    if request.user not in (club.admins.all(), club.owner):
+        return redirect("home")
+    if request.method == "POST":
+        club.admins.add(user)
+        club.members.remove(user)
+        club.save()
+        messages.success(request, f'{user.first_name} {user.last_name} has been promoted to admin.')
+    return redirect("club_settings", club.id)
+
+@login_required
+def kick_user(request, club_id, user_id):
+    club = get_object_or_404(Club, id=club_id)
+    user = get_object_or_404(club.members, id=user_id)
+    if request.user not in (club.admins.all(), club.owner):
+        return redirect("home")
+    if request.method == "POST":
+        club.members.remove(user)
+        club.save()
+        messages.success(request, f'{user.first_name} {user.last_name} has been kicked from the club.')
+    return redirect("club_settings", club.id)
+
+@login_required
+def delete_club(request, club_id):
+    club = get_object_or_404(Club, id=club_id)
+    if request.user != club.owner:
+        return redirect("home")
+    if request.method == "POST":
+        club.delete()
+    return redirect("club_list")
+
+@login_required
+def delete_user(request):
+    if request.method == "POST":
+        password = request.POST.get('deleteAccountPassword')
+        user = authenticate(username=request.user.username, password=password)
+        if user:
+            request.user.delete()
+            messages.success(request, 'Your account has been deleted.')
+            return log_out(request)
+        else:
+            messages.error(request, "Invalid password.")
+            return redirect("account_details")
+    return redirect("home")
+
+# @login_required
+# def add_comment(request, post_id):
+#     post = Post.objects.get(id=post_id)
+#     if request.method == 'POST':
+#         if request.user.is_authenticated:
+#             current_user = request.user
+#             form = CommentForm(request.POST)
+#             if form.is_valid():
+#                 text = form.cleaned_data.get('
 
 def searchbar(request, search_string):
     club_name = search_string[6:]

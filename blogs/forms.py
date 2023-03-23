@@ -1,6 +1,12 @@
 from django import forms
 from django.core.validators import RegexValidator
-from .models import User, Club, Post
+
+from .models import User, Club, Post, Event, Comments, FeaturedBook
+
+
+from django.forms.widgets import DateInput, TimeInput
+from bootstrap_modal_forms.forms import BSModalModelForm
+
 
 class LogInForm(forms.Form):
     username = forms.CharField(label='Username')
@@ -52,16 +58,19 @@ class UserForm(forms.ModelForm):
 class CreateClubForm(forms.ModelForm):
     class Meta:
         model = Club
-        fields = ['name','owner', 'theme', 'bio', 'rules']
-        widgets = {
-            'owner': forms.HiddenInput(attrs = {'is_hidden': True}),
-            'bio': forms.Textarea()
-        }
-        def save(self):
-            super().save(commit = False)
+        fields = ['name', 'theme', 'bio', 'rules']
+        widgets = {'bio': forms.Textarea()}
 
-            club = Club.objects.create()
-            return club
+    def save(self, **kwargs):
+        owner = kwargs.pop('owner', None)
+
+        if not owner:
+            raise ValueError('A user must be specified.')
+
+        club = super().save(commit=False)
+        club.owner = owner
+        club.save()
+        return club
 
 class PostForm(forms.ModelForm):
     """Form to ask user for post text.
@@ -84,3 +93,81 @@ class PostForm(forms.ModelForm):
 
         )
         return post
+
+class CommentForm(forms.ModelForm):
+    text = forms.CharField(
+        widget = forms.CharField(widget = forms.Textarea(attrs = {'placeholder': 'Add a comment'}), label = '')
+    )
+
+    class Meta:
+        model = Comments
+        fields = ['text']
+
+class EventForm(forms.ModelForm):
+    """Form to create or update an event"""
+    # address = forms.CharField(label='Address', widget=forms.TextInput(attrs={'placeholder': 'Optional'}))
+    # eventLink = forms.CharField(label='Event Link', widget=forms.TextInput(attrs={'placeholder': 'Optional'}))
+
+    class Meta:
+        """Form options."""
+
+        model = Event
+        fields = ['title', 'description', 'date', 'location', 'startTime', 'endTime', 'address', 'eventLink']
+        widgets = {
+            'date': DateInput(attrs={'type': 'date'}),
+            'startTime': forms.TimeInput(attrs={'type': 'time'}),
+            'endTime': forms.TimeInput(attrs={'type': 'time'})
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        address = cleaned_data.get("address")
+        event_link = cleaned_data.get("eventLink")
+
+        if address and event_link: # both were entered
+            self.add_error('address', 'Your meeting should be online or in person, but cannot be both.')
+            self.add_error('eventLink', 'Your meeting should be online or in person, but cannot be both.')
+            # raise forms.ValidationError("Your meeting should be online or in person, but cannot be both")
+        elif not address and not event_link: # neither were entered
+            self.add_error('address', 'Your meeting should be online or in person, but cannot be both.')
+            self.add_error('eventLink', 'Your meeting should be online or in person, but cannot be both.')
+            # raise forms.ValidationError("Your meeting should be online or in person, but cannot be both")
+
+
+    def save(self, club):
+        """Create a new user."""
+
+        super().save(commit=False)
+        event = Event.objects.create(
+            club = club,
+            title=self.cleaned_data.get('title'),
+            description=self.cleaned_data.get('description'),
+            #Change admin to current user
+            date = self.cleaned_data.get('date'),
+            location = self.cleaned_data.get('location'),
+            address = self.cleaned_data.get('address'),
+            selectedBook = None,
+            #selectedBook = self.cleaned_data.get('selectedBook'),
+            startTime = self.cleaned_data.get('startTime'),
+            endTime = self.cleaned_data.get('endTime'),
+            eventLink = self.cleaned_data.get('eventLink'),
+        )
+        return event
+
+    
+class BookForm(forms.ModelForm):
+    class Meta:
+        """Form options."""
+        model = FeaturedBook
+        fields = ['book_title', 'book_author']
+        
+    def save(self, user):
+        super().save(commit = False)
+        featured_book = FeaturedBook.objects.create(
+            book_title = self.cleaned_data.get('book_title'),
+            book_author = self.cleaned_data.get('book_author'),
+            curator = user
+        )
+        return featured_book
+        
